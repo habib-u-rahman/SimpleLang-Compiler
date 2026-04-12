@@ -103,9 +103,74 @@ class Parser:
         return ProgramNode(stmts)
 
     def _stmt(self):
-        raise NotImplementedError("Statement parsing coming soon")
+        tok = self._peek()
+        if tok.type in (TT.INT, TT.FLOAT_KW, TT.BOOL_KW, TT.STRING_KW):
+            return self._decl_stmt()
+        elif tok.type == TT.IDENT:
+            return self._assign_stmt()
+        elif tok.type == TT.IF:
+            return self._if_stmt()
+        elif tok.type == TT.WHILE:
+            return self._while_stmt()
+        elif tok.type == TT.PRINT:
+            return self._print_stmt()
+        elif tok.type == TT.LBRACE:
+            return self._block()
+        else:
+            raise ParseError(f"Unexpected token {tok.type!r} at line {tok.line}, col {tok.col}")
 
-    # Expression parsing rules (operator precedence)
+    def _decl_stmt(self):
+        type_map = {TT.INT: "int", TT.FLOAT_KW: "float", TT.BOOL_KW: "bool", TT.STRING_KW: "string"}
+        var_type = type_map[self._advance().type]
+        name = self._expect(TT.IDENT).value
+        init = None
+        if self._match(TT.ASSIGN):
+            init = self._expr()
+        self._expect(TT.SEMICOLON)
+        return DeclNode(var_type, name, init)
+
+    def _assign_stmt(self):
+        name = self._expect(TT.IDENT).value
+        self._expect(TT.ASSIGN)
+        expr = self._expr()
+        self._expect(TT.SEMICOLON)
+        return AssignNode(name, expr)
+
+    def _if_stmt(self):
+        self._expect(TT.IF)
+        self._expect(TT.LPAREN)
+        cond = self._expr()
+        self._expect(TT.RPAREN)
+        then_blk = self._block()
+        else_blk = None
+        if self._match(TT.ELSE):
+            else_blk = self._block()
+        return IfNode(cond, then_blk, else_blk)
+
+    def _while_stmt(self):
+        self._expect(TT.WHILE)
+        self._expect(TT.LPAREN)
+        cond = self._expr()
+        self._expect(TT.RPAREN)
+        body = self._block()
+        return WhileNode(cond, body)
+
+    def _print_stmt(self):
+        self._expect(TT.PRINT)
+        self._expect(TT.LPAREN)
+        expr = self._expr()
+        self._expect(TT.RPAREN)
+        self._expect(TT.SEMICOLON)
+        return PrintNode(expr)
+
+    def _block(self):
+        self._expect(TT.LBRACE)
+        stmts = []
+        while not self._check(TT.RBRACE, TT.EOF):
+            stmts.append(self._stmt())
+        self._expect(TT.RBRACE)
+        return BlockNode(stmts)
+
     def _expr(self):       return self._or_expr()
 
     def _or_expr(self):
