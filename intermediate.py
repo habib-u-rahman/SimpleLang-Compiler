@@ -91,11 +91,13 @@ class TACGenerator:
         self._emit(TAC("label", result=end_lbl))
 
     def _gen_while(self, node):
-        # basic while — labels will be fixed in next commit
-        start_lbl = self._new_label(); end_lbl = self._new_label()
+        start_lbl = self._new_label()
+        body_lbl  = self._new_label()
+        end_lbl   = self._new_label()
         self._emit(TAC("label", result=start_lbl))
         cond = self._gen_expr(node.condition)
-        self._emit(TAC("cjump", arg1=cond, arg2=(start_lbl, end_lbl)))
+        self._emit(TAC("cjump", arg1=cond, arg2=(body_lbl, end_lbl)))
+        self._emit(TAC("label", result=body_lbl))
         self._gen_stmt(node.body)
         self._emit(TAC("jump", arg1=start_lbl))
         self._emit(TAC("label", result=end_lbl))
