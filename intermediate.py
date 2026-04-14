@@ -1,4 +1,5 @@
-# intermediate.py — Three-Address Code Generator
+# intermediate.py — Three-Address Code Generator for SimpleLang
+# Translates the type-checked AST into a linear sequence of TAC instructions
 
 from __future__ import annotations
 from dataclasses import dataclass
