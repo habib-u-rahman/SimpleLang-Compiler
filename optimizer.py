@@ -28,9 +28,26 @@ def _fold(op: str, a, b):
 class Optimizer:
     def optimize(self, code: list[TAC]) -> list[TAC]:
         code = list(code)
-        code, _ = self._constant_folding(code)
-        code, _ = self._constant_propagation(code)
+        changed = True
+        iterations = 0
+        while changed and iterations < 10:
+            changed = False
+            code, c1 = self._constant_folding(code)
+            code, c2 = self._constant_propagation(code)
+            code, c3 = self._dead_code_elimination(code)
+            code, c4 = self._remove_unreachable(code)
+            changed = c1 or c2 or c3 or c4
+            iterations += 1
         return code
+
+    def _remove_unreachable(self, code: list[TAC]) -> tuple[list[TAC], bool]:
+        changed = False
+        new_code = []; skip = False
+        for instr in code:
+            if instr.op == "label": skip = False
+            if not skip: new_code.append(instr)
+            if instr.op == "jump": skip = True; changed = True
+        return new_code, changed
 
     def _constant_propagation(self, code: list[TAC]) -> tuple[list[TAC], bool]:
         changed = False
