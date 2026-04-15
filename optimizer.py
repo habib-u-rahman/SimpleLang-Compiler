@@ -66,6 +66,26 @@ class Optimizer:
             new_code.append(new)
         return new_code, changed
 
+    def _dead_code_elimination(self, code: list[TAC]) -> tuple[list[TAC], bool]:
+        def _is_temp(name) -> bool:
+            return isinstance(name, str) and name.startswith("t")
+        used: set[str] = set()
+        for instr in code:
+            for val in (instr.arg1, instr.arg2):
+                if isinstance(val, str): used.add(val)
+                elif isinstance(val, tuple):
+                    for v in val:
+                        if isinstance(v, str): used.add(v)
+        changed = False
+        new_code = []
+        for instr in code:
+            if (instr.op in ("assign", "binop", "unary")
+                    and _is_temp(instr.result) and instr.result not in used):
+                changed = True
+            else:
+                new_code.append(instr)
+        return new_code, changed
+
     def _constant_folding(self, code: list[TAC]) -> tuple[list[TAC], bool]:
         changed = False
         new_code = []
