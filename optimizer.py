@@ -29,7 +29,42 @@ class Optimizer:
     def optimize(self, code: list[TAC]) -> list[TAC]:
         code = list(code)
         code, _ = self._constant_folding(code)
+        code, _ = self._constant_propagation(code)
         return code
+
+    def _constant_propagation(self, code: list[TAC]) -> tuple[list[TAC], bool]:
+        changed = False
+        const_map: dict[str, object] = {}
+        for instr in code:
+            if instr.op == "assign":
+                v = instr.arg1
+                if isinstance(v, (int, float, bool)) or (isinstance(v, str) and v.startswith('"')):
+                    const_map[instr.result] = v
+                elif isinstance(v, str) and v in const_map:
+                    const_map[instr.result] = const_map[v]
+                else:
+                    const_map.pop(instr.result, None)
+            elif instr.op in ("binop", "unary"):
+                const_map.pop(instr.result, None)
+
+        def _sub(v):
+            if isinstance(v, str) and v in const_map:
+                return const_map[v]
+            return v
+
+        new_code = []
+        for instr in code:
+            new = TAC(instr.op, instr.result, instr.arg1, instr.arg2)
+            if new.op in ("assign", "print", "cjump"):
+                old = new.arg1; new.arg1 = _sub(new.arg1)
+                if new.arg1 != old: changed = True
+            if new.op == "binop":
+                op_sym, rhs = new.arg2
+                new_lhs = _sub(new.arg1); new_rhs = _sub(rhs)
+                if new_lhs != new.arg1 or new_rhs != rhs: changed = True
+                new.arg1 = new_lhs; new.arg2 = (op_sym, new_rhs)
+            new_code.append(new)
+        return new_code, changed
 
     def _constant_folding(self, code: list[TAC]) -> tuple[list[TAC], bool]:
         changed = False
