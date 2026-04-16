@@ -75,3 +75,51 @@ class CodeGenerator:
         print("\n===== Target Assembly =====")
         for instr in self.instructions: print(instr)
         print("===========================\n")
+
+    def write_to_file(self, path: str):
+        with open(path, "w") as f:
+            for instr in self.instructions:
+                f.write(str(instr) + "\n")
+
+
+class VirtualMachine:
+    """Stack-based VM that executes the pseudo-assembly produced by CodeGenerator."""
+
+    def __init__(self, instructions: list):
+        self.instructions = instructions
+        self.label_map: dict[str, int] = {}
+        for idx, instr in enumerate(instructions):
+            if isinstance(instr, LabelInstr):
+                self.label_map[instr.name] = idx
+
+    def run(self):
+        memory: dict[str, object] = {}
+        stack: list = []
+        pc = 0
+        while pc < len(self.instructions):
+            instr = self.instructions[pc]; pc += 1
+            if isinstance(instr, LabelInstr): continue
+            match instr.op:
+                case "PUSH":  stack.append(instr.arg)
+                case "LOAD":  stack.append(memory.get(instr.arg, 0))
+                case "STORE": memory[instr.arg] = stack.pop()
+                case "ADD":   b, a = stack.pop(), stack.pop(); stack.append(a + b)
+                case "SUB":   b, a = stack.pop(), stack.pop(); stack.append(a - b)
+                case "MUL":   b, a = stack.pop(), stack.pop(); stack.append(a * b)
+                case "DIV":   b, a = stack.pop(), stack.pop(); stack.append(a / b)
+                case "MOD":   b, a = stack.pop(), stack.pop(); stack.append(int(a) % int(b))
+                case "EQ":    b, a = stack.pop(), stack.pop(); stack.append(a == b)
+                case "NEQ":   b, a = stack.pop(), stack.pop(); stack.append(a != b)
+                case "LT":    b, a = stack.pop(), stack.pop(); stack.append(a < b)
+                case "GT":    b, a = stack.pop(), stack.pop(); stack.append(a > b)
+                case "LTE":   b, a = stack.pop(), stack.pop(); stack.append(a <= b)
+                case "GTE":   b, a = stack.pop(), stack.pop(); stack.append(a >= b)
+                case "AND":   b, a = stack.pop(), stack.pop(); stack.append(bool(a) and bool(b))
+                case "OR":    b, a = stack.pop(), stack.pop(); stack.append(bool(a) or bool(b))
+                case "NOT":   stack.append(not stack.pop())
+                case "NEG":   stack.append(-stack.pop())
+                case "JMP":   pc = self.label_map[instr.arg] + 1
+                case "JIF":
+                    if stack.pop(): pc = self.label_map[instr.arg] + 1
+                case "PRINT": print(stack.pop())
+                case "HALT":  break
