@@ -1,0 +1,12 @@
+int a = 15;
+int b = 4;
+int sum      = a + b;
+int diff     = a - b;
+int product  = a * b;
+int quotient = a / b;
+int rem      = a % b;
+print(sum);
+print(diff);
+print(product);
+print(quotient);
+print(rem);
