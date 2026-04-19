@@ -65,8 +65,11 @@ class Optimizer:
                 const_map.pop(instr.result, None)
 
         def _sub(v):
-            if isinstance(v, str) and v in const_map:
-                return const_map[v]
+            # chain-substitute until stable
+            seen = set()
+            while isinstance(v, str) and v in const_map and v not in seen:
+                seen.add(v)
+                v = const_map[v]
             return v
 
         new_code = []
