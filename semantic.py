@@ -43,14 +43,14 @@ class SemanticAnalyser:
 
     def _visit_decl(self, node: DeclNode):
         if self.sym_table.exists_in_current_scope(node.name):
-            self._error(f"Variable '{node.name}' already declared in this scope.")
+            self._error(f"Line error — Variable '{node.name}' already declared in scope '{self.sym_table.current_scope_name}'.")
             return
         init_type = None
         if node.init is not None:
             init_type = self._visit_expr(node.init)
             if not self._types_compatible(node.var_type, init_type):
                 self._error(f"Type mismatch in declaration of '{node.name}': "
-                            f"declared as '{node.var_type}' but initialised with '{init_type}'.")
+                            f"declared as '{node.var_type}' but assigned '{init_type}' value.")
         self.sym_table.insert(node.name, node.var_type)
 
     def _visit_assign(self, node: AssignNode):
