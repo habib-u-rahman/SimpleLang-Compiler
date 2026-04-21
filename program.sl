@@ -7,3 +7,14 @@ if (can_vote) {
 } else {
     print(0);
 }
+
+int count = 1;
+while (count < 6) {
+    print(count);
+    count = count + 1;
+}
+
+int x = 100;
+int y = 25;
+int result = x - y;
+print(result);
