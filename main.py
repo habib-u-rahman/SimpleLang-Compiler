@@ -76,7 +76,11 @@ def compile_and_run(source: str, dump: bool = False) -> bool:
 def main():
     args = sys.argv[1:]
     if not args or args[0] in ("-h", "--help"):
-        print("SimpleLang Compiler\nUsage:\n  python main.py <source.sl>\n  python main.py <source.sl> --dump\n  python main.py --example")
+        print("SimpleLang Compiler\n")
+        print("Usage:")
+        print("  python main.py <source.sl>          # compile and run")
+        print("  python main.py <source.sl> --dump   # show every phase")
+        print("  python main.py --example            # run built-in demo")
         return
     if args[0] == "--example":
         print("=== Running built-in example ===")
