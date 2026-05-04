@@ -33,8 +33,119 @@ DIM2     = "#64748b"   # slate-500   placeholder / dim
 EDITOR   = "#070d1a"   # code editor bg (darkest)
 
 # syntax colours inside editor
+BLUE_SYN = "#7dd3fc"
 SYN = dict(kw=ACCENT_L, num=AMBER, str=GREEN, boo=CYAN,
-           op=BLUE_SYN := "#7dd3fc", cmt=DIM2)
+           op=BLUE_SYN, cmt=DIM2)
+
+# ── SimpleLang BNF Grammar (Top-Down LL(1)) ───────────────────────────────────
+# Each entry: (rule_num, LHS, RHS_string)
+# Convention: PascalCase = non-terminal, lowercase/symbol = terminal, ε = epsilon
+_NT = {                                      # non-terminal set for coloriser
+    "Program","StmtList","Stmt","Decl","Type","Assign",
+    "IfStmt","ElsePart","WhileStmt","PrintStmt","Block",
+    "Expr","ExprRest","AndExpr","AndRest","EqExpr","EqRest",
+    "RelExpr","RelRest","AddExpr","AddRest","MulExpr","MulRest",
+    "UnaryExpr","Primary",
+}
+GRAMMAR_RULES = [
+    # ── Statements ────────────────────────────────────────────────────────────
+    ( 1, "Program",    "StmtList"),
+    ( 2, "StmtList",   "Stmt  StmtList"),
+    ( 3, "StmtList",   "ε"),
+    ( 4, "Stmt",       "Decl"),
+    ( 5, "Stmt",       "Assign"),
+    ( 6, "Stmt",       "IfStmt"),
+    ( 7, "Stmt",       "WhileStmt"),
+    ( 8, "Stmt",       "PrintStmt"),
+    ( 9, "Stmt",       "Block"),
+    (10, "Decl",       "Type  id  =  Expr  ;"),
+    (11, "Type",       "int"),
+    (12, "Type",       "float"),
+    (13, "Type",       "bool"),
+    (14, "Type",       "string"),
+    (15, "Assign",     "id  =  Expr  ;"),
+    (16, "IfStmt",     "if  (  Expr  )  Block  ElsePart"),
+    (17, "ElsePart",   "else  Block"),
+    (18, "ElsePart",   "ε"),
+    (19, "WhileStmt",  "while  (  Expr  )  Block"),
+    (20, "PrintStmt",  "print  (  Expr  )  ;"),
+    (21, "Block",      "{  StmtList  }"),
+    # ── Expressions ───────────────────────────────────────────────────────────
+    (22, "Expr",       "AndExpr  ExprRest"),
+    (23, "ExprRest",   "||  AndExpr  ExprRest"),
+    (24, "ExprRest",   "ε"),
+    (25, "AndExpr",    "EqExpr  AndRest"),
+    (26, "AndRest",    "&&  EqExpr  AndRest"),
+    (27, "AndRest",    "ε"),
+    (28, "EqExpr",     "RelExpr  EqRest"),
+    (29, "EqRest",     "==  RelExpr  EqRest"),
+    (30, "EqRest",     "!=  RelExpr  EqRest"),
+    (31, "EqRest",     "ε"),
+    (32, "RelExpr",    "AddExpr  RelRest"),
+    (33, "RelRest",    "<  AddExpr  RelRest"),
+    (34, "RelRest",    ">  AddExpr  RelRest"),
+    (35, "RelRest",    "<=  AddExpr  RelRest"),
+    (36, "RelRest",    ">=  AddExpr  RelRest"),
+    (37, "RelRest",    "ε"),
+    (38, "AddExpr",    "MulExpr  AddRest"),
+    (39, "AddRest",    "+  MulExpr  AddRest"),
+    (40, "AddRest",    "-  MulExpr  AddRest"),
+    (41, "AddRest",    "ε"),
+    (42, "MulExpr",    "UnaryExpr  MulRest"),
+    (43, "MulRest",    "*  UnaryExpr  MulRest"),
+    (44, "MulRest",    "/  UnaryExpr  MulRest"),
+    (45, "MulRest",    "%  UnaryExpr  MulRest"),
+    (46, "MulRest",    "ε"),
+    (47, "UnaryExpr",  "!  UnaryExpr"),
+    (48, "UnaryExpr",  "-  UnaryExpr"),
+    (49, "UnaryExpr",  "Primary"),
+    (50, "Primary",    "id"),
+    (51, "Primary",    "NUM"),
+    (52, "Primary",    "FLOAT"),
+    (53, "Primary",    "STRING"),
+    (54, "Primary",    "true"),
+    (55, "Primary",    "false"),
+    (56, "Primary",    "(  Expr  )"),
+]
+
+# ── LL(1) Parsing Table ───────────────────────────────────────────────────────
+# Format: LL1_STMT[non-terminal][terminal] = "Rn"  (blank = error cell)
+
+# Statement-level table
+_STMT_COLS  = ["int","float","bool","str","id","if","while","print","{","else","}","$"]
+_STMT_TABLE = {
+    "Program":   {"int":"R1","float":"R1","bool":"R1","str":"R1","id":"R1","if":"R1","while":"R1","print":"R1","{":"R1","else":"","}":" R1","$":"R1"},
+    "StmtList":  {"int":"R2","float":"R2","bool":"R2","str":"R2","id":"R2","if":"R2","while":"R2","print":"R2","{":"R2","else":"","}":" R3","$":"R3"},
+    "Stmt":      {"int":"R4","float":"R4","bool":"R4","str":"R4","id":"R5","if":"R6","while":"R7","print":"R8","{":"R9","else":"","}":" ","$":""},
+    "Decl":      {"int":"R10","float":"R10","bool":"R10","str":"R10","id":"","if":"","while":"","print":"","{":"","else":"","}":" ","$":""},
+    "Type":      {"int":"R11","float":"R12","bool":"R13","str":"R14","id":"","if":"","while":"","print":"","{":"","else":"","}":" ","$":""},
+    "Assign":    {"int":"","float":"","bool":"","str":"","id":"R15","if":"","while":"","print":"","{":"","else":"","}":" ","$":""},
+    "IfStmt":    {"int":"","float":"","bool":"","str":"","id":"","if":"R16","while":"","print":"","{":"","else":"","}":" ","$":""},
+    "ElsePart":  {"int":"R18","float":"R18","bool":"R18","str":"R18","id":"R18","if":"R18","while":"R18","print":"R18","{":"R18","else":"R17","}":" R18","$":"R18"},
+    "WhileStmt": {"int":"","float":"","bool":"","str":"","id":"","if":"","while":"R19","print":"","{":"","else":"","}":" ","$":""},
+    "PrintStmt": {"int":"","float":"","bool":"","str":"","id":"","if":"","while":"","print":"R20","{":"","else":"","}":" ","$":""},
+    "Block":     {"int":"","float":"","bool":"","str":"","id":"","if":"","while":"","print":"","{":"R21","else":"","}":" ","$":""},
+}
+
+# Expression-level table  (terminals: id  lit  (  !  -  ||  &&  ==  !=  <  >  +  *  )  ; )
+_EXPR_COLS  = ["id","lit","(","!","-","||","&&","==","!=","<",">","<=",">=","+","-*","*","/","%",")",";"]
+_EXPR_LABELS= ["id","lit","(", "!","-", "||","&&","==","!=","<", ">", "<=",">=","+", "-","*", "/", "%",")",";"]
+_EXPR_TABLE = {
+    "Expr":      {"id":"R22","lit":"R22","(":"R22","!":"R22","-":"R22","||":"","&&":"","==":"","!=":"","<":"",">":"","<=":"",">=":"","+":"","-*":"","*":"","/":"","%":"",")":"",";":""},
+    "ExprRest":  {"id":"","lit":"","(":"","!":"","-":"","||":"R23","&&":"","==":"","!=":"","<":"",">":"","<=":"",">=":"","+":"","-*":"","*":"","/":"","%":"",")":"R24",";":"R24"},
+    "AndExpr":   {"id":"R25","lit":"R25","(":"R25","!":"R25","-":"R25","||":"","&&":"","==":"","!=":"","<":"",">":"","<=":"",">=":"","+":"","-*":"","*":"","/":"","%":"",")":"",";":""},
+    "AndRest":   {"id":"","lit":"","(":"","!":"","-":"","||":"R27","&&":"R26","==":"","!=":"","<":"",">":"","<=":"",">=":"","+":"","-*":"","*":"","/":"","%":"",")":"R27",";":"R27"},
+    "EqExpr":    {"id":"R28","lit":"R28","(":"R28","!":"R28","-":"R28","||":"","&&":"","==":"","!=":"","<":"",">":"","<=":"",">=":"","+":"","-*":"","*":"","/":"","%":"",")":"",";":""},
+    "EqRest":    {"id":"","lit":"","(":"","!":"","-":"","||":"R31","&&":"R31","==":"R29","!=":"R30","<":"",">":"","<=":"",">=":"","+":"","-*":"","*":"","/":"","%":"",")":"R31",";":"R31"},
+    "RelExpr":   {"id":"R32","lit":"R32","(":"R32","!":"R32","-":"R32","||":"","&&":"","==":"","!=":"","<":"",">":"","<=":"",">=":"","+":"","-*":"","*":"","/":"","%":"",")":"",";":""},
+    "RelRest":   {"id":"","lit":"","(":"","!":"","-":"","||":"R37","&&":"R37","==":"R37","!=":"R37","<":"R33",">":"R34","<=":"R35",">=":"R36","+":"","-*":"","*":"","/":"","%":"",")":"R37",";":"R37"},
+    "AddExpr":   {"id":"R38","lit":"R38","(":"R38","!":"R38","-":"R38","||":"","&&":"","==":"","!=":"","<":"",">":"","<=":"",">=":"","+":"","-*":"","*":"","/":"","%":"",")":"",";":""},
+    "AddRest":   {"id":"","lit":"","(":"","!":"","-":"","||":"R41","&&":"R41","==":"R41","!=":"R41","<":"R41",">":"R41","<=":"R41",">=":"R41","+":"R39","-*":"R40","*":"","/":"","%":"",")":"R41",";":"R41"},
+    "MulExpr":   {"id":"R42","lit":"R42","(":"R42","!":"R42","-":"R42","||":"","&&":"","==":"","!=":"","<":"",">":"","<=":"",">=":"","+":"","-*":"","*":"","/":"","%":"",")":"",";":""},
+    "MulRest":   {"id":"","lit":"","(":"","!":"","-":"","||":"R46","&&":"R46","==":"R46","!=":"R46","<":"R46",">":"R46","<=":"R46",">=":"R46","+":"R46","-*":"R46","*":"R43","/":"R44","%":"R45",")":"R46",";":"R46"},
+    "UnaryExpr": {"id":"R49","lit":"R49","(":"R49","!":"R47","-":"R48","||":"","&&":"","==":"","!=":"","<":"",">":"","<=":"",">=":"","+":"","-*":"","*":"","/":"","%":"",")":"",";":""},
+    "Primary":   {"id":"R50","lit":"R51","(":"R56","!":"","-":"","||":"","&&":"","==":"","!=":"","<":"",">":"","<=":"",">=":"","+":"","-*":"","*":"","/":"","%":"",")":"",";":""},
+}
 
 # token-type → treeview row tag
 def _tt_tag(tt: str) -> str:
@@ -129,41 +240,205 @@ def tv_clear(tv: ttk.Treeview):
     for r in tv.get_children(): tv.delete(r)
 
 
-# ── AST  pretty-printer ───────────────────────────────────────────────────────
-def ast_segs(node, prefix="", last=True) -> list[tuple[str, str]]:
-    conn   = "└─ " if last else "├─ "
-    branch = "   " if last else "│  "
-    name   = type(node).__name__
-    out    = [(prefix + conn, "dm2"), (name, "bold_acc")]
+# ── Grammar  renderer ────────────────────────────────────────────────────────
+def render_grammar(t: tk.Text):
+    t.configure(state="normal")
+    t.delete("1.0", "end")
 
-    if   name == "LiteralNode":  out += [(f"  {node.value!r}", "am"),
-                                          (f"  :{node.lit_type}", "dm")]
-    elif name == "IdentNode":    out += [(f"  '{node.name}'", "pk")]
-    elif name == "BinOpNode":    out += [(f"  [{node.op}]", "bl")]
-    elif name == "UnaryOpNode":  out += [(f"  [{node.op}]", "bl")]
-    elif name == "DeclNode":     out += [(f"  {node.var_type} ", "cy"),
-                                          (f"'{node.name}'", "pk")]
-    elif name == "AssignNode":   out += [(f"  '{node.name}'", "pk")]
-    out.append(("\n", "tx"))
+    header = (
+        "  SimpleLang  —  BNF Grammar\n"
+        "  Parsing Strategy :  Top-Down  LL(1)  Predictive  Parser\n"
+        "  " + "─" * 56 + "\n\n"
+        "  Convention :  PascalCase = Non-Terminal   |   lowercase / symbol = Terminal\n\n"
+    )
+    t.insert("end", header, "bold_acc")
 
-    kids = []
-    if   name == "ProgramNode":  kids = node.stmts
+    prev_lhs = None
+    for num, lhs, rhs in GRAMMAR_RULES:
+        # blank line between groups
+        if prev_lhs and prev_lhs != lhs:
+            t.insert("end", "\n")
+        prev_lhs = lhs
+
+        t.insert("end", f"  R{num:<3}", "dm2")
+        t.insert("end", f"  {lhs:<12}", "cy")
+        t.insert("end", "  →  ", "dm2")
+
+        for token in rhs.split():
+            if token == "ε":
+                t.insert("end", "ε  ", "pk")
+            elif token in _NT:
+                t.insert("end", token + "  ", "cy")
+            else:
+                t.insert("end", token + "  ", "am")
+        t.insert("end", "\n")
+
+    t.insert("end", "\n  " + "─" * 56 + "\n", "dm2")
+    t.insert("end", f"  Total: {len(GRAMMAR_RULES)} production rules\n", "dm")
+    t.configure(state="disabled")
+
+
+# ── Parse Table  renderer ─────────────────────────────────────────────────────
+def render_parse_table(nb_parent: ttk.Notebook):
+    def _make_table(parent, cols, col_labels, table_data, rows):
+        f = tk.Frame(parent, bg=BG)
+        f.pack(fill="both", expand=True)
+        tv = ttk.Treeview(f, columns=cols, show="headings", style="SL.Treeview")
+        tv.heading("NT", text="Non-Terminal")
+        tv.column("NT", width=130, minwidth=100, anchor="w")
+        for cid, clbl in zip(cols[1:], col_labels[1:]):
+            tv.heading(cid, text=clbl)
+            tv.column(cid, width=54, minwidth=36, anchor="center")
+        for nt in rows:
+            row = [nt]
+            for c in cols[1:]:
+                val = table_data.get(nt, {}).get(c, "").strip()
+                row.append(val)
+            tags = ()
+            if any(v for v in row[1:]):
+                tags = ("has",)
+            tv.insert("", "end", values=row, tags=tags)
+        tv.tag_configure("has", foreground=TEXT)
+        sby = ttk.Scrollbar(f, orient="vertical",   command=tv.yview)
+        sbx = ttk.Scrollbar(f, orient="horizontal", command=tv.xview)
+        tv.configure(yscrollcommand=sby.set, xscrollcommand=sbx.set)
+        sby.pack(side="right",  fill="y")
+        sbx.pack(side="bottom", fill="x")
+        tv.pack(fill="both", expand=True)
+        return tv
+
+    # Sub-tab 1: Statement rules
+    fs = tk.Frame(nb_parent, bg=BG)
+    nb_parent.add(fs, text="  Statements  ")
+    hdr = tk.Frame(fs, bg=SURF2, height=26)
+    hdr.pack(fill="x"); hdr.pack_propagate(False)
+    tk.Label(hdr, text="  Statement-Level  LL(1)  Table   (R n  = apply production rule n)",
+             font=("Consolas", 8, "bold"), bg=SURF2, fg=CYAN, anchor="w").pack(
+             side="left", fill="both", padx=8)
+    stmt_cols   = ["NT"] + _STMT_COLS
+    stmt_labels = ["Non-Terminal"] + _STMT_COLS
+    stmt_rows   = ["Program","StmtList","Stmt","Decl","Type","Assign",
+                   "IfStmt","ElsePart","WhileStmt","PrintStmt","Block"]
+    _make_table(fs, stmt_cols, stmt_labels, _STMT_TABLE, stmt_rows)
+
+    # Sub-tab 2: Expression rules
+    fe = tk.Frame(nb_parent, bg=BG)
+    nb_parent.add(fe, text="  Expressions  ")
+    hdr2 = tk.Frame(fe, bg=SURF2, height=26)
+    hdr2.pack(fill="x"); hdr2.pack_propagate(False)
+    tk.Label(hdr2, text="  Expression-Level  LL(1)  Table   (blank = error / not applicable)",
+             font=("Consolas", 8, "bold"), bg=SURF2, fg=AMBER, anchor="w").pack(
+             side="left", fill="both", padx=8)
+    expr_cols   = ["NT"] + _EXPR_COLS
+    expr_labels = ["Non-Terminal"] + _EXPR_LABELS
+    expr_rows   = ["Expr","ExprRest","AndExpr","AndRest","EqExpr","EqRest",
+                   "RelExpr","RelRest","AddExpr","AddRest","MulExpr","MulRest",
+                   "UnaryExpr","Primary"]
+    _make_table(fe, expr_cols, expr_labels, _EXPR_TABLE, expr_rows)
+
+
+# ── Operator symbol map ───────────────────────────────────────────────────────
+OP_SYM = {
+    "PLUS": "+",  "MINUS": "-",  "STAR": "*",  "SLASH": "/",  "PERCENT": "%",
+    "LT":   "<",  "GT":    ">",  "LTE":  "<=", "GTE":   ">=",
+    "EQ":   "==", "NEQ":   "!=", "AND":  "&&", "OR":    "||", "NOT": "!",
+}
+
+# ── AST  tree populator  (fills a ttk.Treeview) ───────────────────────────────
+def populate_ast_tree(tv: ttk.Treeview, node, parent=""):
+    name = type(node).__name__
+
+    if name == "ProgramNode":
+        item = tv.insert(parent, "end", text="  Program",
+                         values=(f"{len(node.stmts)} statement(s)",),
+                         tags=("prog",), open=True)
+        for stmt in node.stmts:
+            populate_ast_tree(tv, stmt, item)
+
     elif name == "DeclNode":
-        if node.init: kids = [node.init]
-    elif name == "AssignNode":
-        if node.expr: kids = [node.expr]
-    elif name == "IfNode":
-        kids = [node.condition, node.then_block]
-        if node.else_block: kids.append(node.else_block)
-    elif name == "WhileNode":    kids = [node.condition, node.body]
-    elif name == "PrintNode":    kids = [node.expr]
-    elif name == "BlockNode":    kids = node.stmts
-    elif name == "BinOpNode":    kids = [node.left, node.right]
-    elif name == "UnaryOpNode":  kids = [node.operand]
+        detail = f"{node.var_type}  '{node.name}'" + ("  = ..." if node.init else "")
+        item = tv.insert(parent, "end", text="  Declare",
+                         values=(detail,), tags=("decl",), open=True)
+        if node.init:
+            sub = tv.insert(item, "end", text="  init",
+                            values=("initial value",), tags=("lbl",), open=True)
+            populate_ast_tree(tv, node.init, sub)
 
-    for i, kid in enumerate(kids):
-        out += ast_segs(kid, prefix + branch, i == len(kids) - 1)
-    return out
+    elif name == "AssignNode":
+        item = tv.insert(parent, "end", text="  Assign",
+                         values=(f"'{node.name}'  = ...",),
+                         tags=("decl",), open=True)
+        if node.expr:
+            populate_ast_tree(tv, node.expr, item)
+
+    elif name == "IfNode":
+        has_else = "  /  else" if node.else_block else ""
+        item = tv.insert(parent, "end", text="  If",
+                         values=(f"condition  /  then{has_else}",),
+                         tags=("ctrl",), open=True)
+        cond = tv.insert(item, "end", text="  condition",
+                         values=("",), tags=("lbl",), open=True)
+        populate_ast_tree(tv, node.condition, cond)
+        then = tv.insert(item, "end", text="  then",
+                         values=("",), tags=("lbl",), open=True)
+        populate_ast_tree(tv, node.then_block, then)
+        if node.else_block:
+            else_ = tv.insert(item, "end", text="  else",
+                              values=("",), tags=("lbl",), open=True)
+            populate_ast_tree(tv, node.else_block, else_)
+
+    elif name == "WhileNode":
+        item = tv.insert(parent, "end", text="  While",
+                         values=("condition  /  body",),
+                         tags=("ctrl",), open=True)
+        cond = tv.insert(item, "end", text="  condition",
+                         values=("",), tags=("lbl",), open=True)
+        populate_ast_tree(tv, node.condition, cond)
+        body = tv.insert(item, "end", text="  body",
+                         values=("",), tags=("lbl",), open=True)
+        populate_ast_tree(tv, node.body, body)
+
+    elif name == "PrintNode":
+        item = tv.insert(parent, "end", text="  Print",
+                         values=("output expression",),
+                         tags=("ctrl",), open=True)
+        populate_ast_tree(tv, node.expr, item)
+
+    elif name == "BlockNode":
+        item = tv.insert(parent, "end", text="  Block",
+                         values=(f"{len(node.stmts)} statement(s)",),
+                         tags=("prog",), open=True)
+        for stmt in node.stmts:
+            populate_ast_tree(tv, stmt, item)
+
+    elif name == "BinOpNode":
+        sym = OP_SYM.get(node.op, node.op)
+        item = tv.insert(parent, "end", text=f"  BinOp  [ {sym} ]",
+                         values=("binary expression",),
+                         tags=("op",), open=True)
+        left = tv.insert(item, "end", text="  left",
+                         values=("",), tags=("lbl",), open=True)
+        populate_ast_tree(tv, node.left, left)
+        right = tv.insert(item, "end", text="  right",
+                          values=("",), tags=("lbl",), open=True)
+        populate_ast_tree(tv, node.right, right)
+
+    elif name == "UnaryOpNode":
+        sym = OP_SYM.get(node.op, node.op)
+        item = tv.insert(parent, "end", text=f"  UnaryOp  [ {sym} ]",
+                         values=("unary expression",),
+                         tags=("op",), open=True)
+        populate_ast_tree(tv, node.operand, item)
+
+    elif name == "LiteralNode":
+        tv.insert(parent, "end", text="  Literal",
+                  values=(f"{node.value!r}   : {node.lit_type}",),
+                  tags=("lit",), open=True)
+
+    elif name == "IdentNode":
+        tv.insert(parent, "end", text="  Ident",
+                  values=(f"'{node.name}'",),
+                  tags=("ident",), open=True)
 
 
 # ── TAC  renderer ─────────────────────────────────────────────────────────────
@@ -485,9 +760,56 @@ while (counter < 3) {
                          ("ops", "#7dd3fc"), ("dlm", TEXT), ("eof", DIM2)]:
             self.tv_tok.tag_configure(tag, foreground=col)
 
+        # Grammar
+        fg_ = tk.Frame(self.nb, bg=BG); self.nb.add(fg_, text="  ≡  Grammar  ")
+        self.t_grammar = make_txt(fg_)
+        render_grammar(self.t_grammar)
+
         # AST
         fa = tk.Frame(self.nb, bg=BG); self.nb.add(fa, text="  🌳  AST  ")
-        self.t_ast = make_txt(fa)
+
+        info_bar = tk.Frame(fa, bg=SURF2, height=26)
+        info_bar.pack(fill="x")
+        info_bar.pack_propagate(False)
+        tk.Label(info_bar,
+                 text="  Phase 2  —  Top-Down  LL(1)  Predictive  Parser  |  Abstract Syntax Tree",
+                 font=("Consolas", 8, "bold"),
+                 bg=SURF2, fg=ACCENT_L, anchor="w").pack(
+                 side="left", fill="both", padx=8)
+
+        af = tk.Frame(fa, bg=BG)
+        af.pack(fill="both", expand=True)
+        self.tv_ast = ttk.Treeview(af, columns=("info",),
+                                   show="tree headings",
+                                   style="SL.Treeview")
+        self.tv_ast.heading("#0",   text="Node  /  Type")
+        self.tv_ast.heading("info", text="Details")
+        self.tv_ast.column("#0",   width=240, minwidth=120, stretch=False)
+        self.tv_ast.column("info", width=360, minwidth=100, anchor="w")
+        sby_a = ttk.Scrollbar(af, orient="vertical",   command=self.tv_ast.yview)
+        sbx_a = ttk.Scrollbar(af, orient="horizontal", command=self.tv_ast.xview)
+        self.tv_ast.configure(yscrollcommand=sby_a.set, xscrollcommand=sbx_a.set)
+        sby_a.pack(side="right",  fill="y")
+        sbx_a.pack(side="bottom", fill="x")
+        self.tv_ast.pack(fill="both", expand=True)
+        for tag, col in [("prog",  ACCENT_L), ("decl",  CYAN),
+                         ("ctrl",  AMBER),    ("op",    BLUE_SYN),
+                         ("lit",   AMBER),    ("ident", PINK),
+                         ("lbl",   DIM)]:
+            self.tv_ast.tag_configure(tag, foreground=col)
+
+        # Parse Table
+        fpt = tk.Frame(self.nb, bg=BG); self.nb.add(fpt, text="  ⊞  Parse Table  ")
+        hdr_pt = tk.Frame(fpt, bg=SURF2, height=26)
+        hdr_pt.pack(fill="x"); hdr_pt.pack_propagate(False)
+        tk.Label(hdr_pt,
+                 text="  LL(1) Predictive Parsing Table  —  Phase 2",
+                 font=("Consolas", 8, "bold"),
+                 bg=SURF2, fg=ACCENT_L, anchor="w").pack(
+                 side="left", fill="both", padx=8)
+        pt_nb = ttk.Notebook(fpt)
+        pt_nb.pack(fill="both", expand=True)
+        render_parse_table(pt_nb)
 
         # Symbols
         fs = tk.Frame(self.nb, bg=BG); self.nb.add(fs, text="  ▦  Symbols  ")
@@ -598,7 +920,8 @@ while (counter < 3) {
         self._phases_reset()
         tv_clear(self.tv_tok)
         tv_clear(self.tv_sym)
-        for t in (self.t_out, self.t_ast, self.t_tac, self.t_opt, self.t_asm):
+        tv_clear(self.tv_ast)
+        for t in (self.t_out, self.t_tac, self.t_opt, self.t_asm):
             txt_put(t, [])
 
         # ── Phase 0: Lex ──────────────────────────────────────────────────────
@@ -622,10 +945,8 @@ while (counter < 3) {
             self._phase(1, "err"); return self._err("Parser", str(e))
         self._phase(1, "ok")
 
-        segs = [("  Abstract Syntax Tree\n", "bold_acc"),
-                ("  " + "─" * 50 + "\n\n", "dm2")]
-        segs += ast_segs(ast)
-        txt_put(self.t_ast, segs)
+        tv_clear(self.tv_ast)
+        populate_ast_tree(self.tv_ast, ast)
 
         # ── Phase 2: Semantic ─────────────────────────────────────────────────
         self._phase(2, "run"); self._status("Phase 3  —  Semantic Analysis …", GREEN)
@@ -717,8 +1038,8 @@ while (counter < 3) {
     def _clear(self):
         self.editor.delete("1.0", "end")
         self._phases_reset()
-        tv_clear(self.tv_tok); tv_clear(self.tv_sym)
-        for t in (self.t_out, self.t_ast, self.t_tac, self.t_opt, self.t_asm):
+        tv_clear(self.tv_tok); tv_clear(self.tv_sym); tv_clear(self.tv_ast)
+        for t in (self.t_out, self.t_tac, self.t_opt, self.t_asm):
             txt_put(t, [])
         self._refresh()
         self._status("  Cleared")
